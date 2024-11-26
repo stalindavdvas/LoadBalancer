@@ -1,7 +1,7 @@
 name: Deploy to EC2 Instances
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
@@ -14,30 +14,26 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    # 2. Instalar dependencias si es necesario
-    - name: Set up Node.js environment (optional)
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16'
-
-    - name: Install dependencies
-      run: npm install  # Cambia según tu proyecto
-
-    # 3. Desplegar a las instancias EC2 (con clave SSH)
-    - name: Deploy to EC2 instance
+    # 2. Guardar la clave SSH desde el secreto y ajustar permisos
+    - name: Setup SSH Key
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" > stalin.pem
         chmod 600 stalin.pem
 
-        # Conectar a las instancias EC2 manualmente usando sus IPs
-        ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ec2-user@ec2-52-91-198-69.compute-1.amazonaws.com "
-          cd /path/to/project && git pull origin main && npm install && pm2 restart all
-        "
-        # Agrega las IPs de las otras instancias de la misma manera
-        ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ec2-user@<other-instance-ip> "
-          cd /path/to/project && git pull origin main && npm install && pm2 restart all
+    # 3. Conectar a la primera instancia y actualizar el código
+    - name: Deploy to first EC2 instance
+      run: |
+        ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ubuntu@ec2-52-54-210-132.compute-1.amazonaws.com "
+          cd /var/www/html &&
+          git pull origin main &&
+          sudo systemctl restart nginx
         "
 
-    # 4. Guardar las claves en GitHub Secrets
-    env:
-      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+    # 4. Conectar a la segunda instancia y actualizar el código
+    - name: Deploy to second EC2 instance
+      run: |
+        ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ubuntu@ec2-52-91-167-179.compute-1.amazonaws.com "
+          cd /var/www/html &&
+          git pull origin main &&
+          sudo systemctl restart nginx
+        "
