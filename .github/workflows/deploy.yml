@@ -10,40 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout: Descargar el código de la rama actual del repositorio
+    # 1. Checkout: Descargar el código del repositorio
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    # 2. Instalar dependencias si es necesario (Node.js como ejemplo)
+    # 2. Instalar dependencias si es necesario
     - name: Set up Node.js environment (optional)
       uses: actions/setup-node@v2
       with:
         node-version: '16'
 
     - name: Install dependencies
-      run: npm install  # Cambia según las dependencias que uses
+      run: npm install  # Cambia según tu proyecto
 
-    # 3. Desplegar en las instancias EC2
-    - name: Deploy to EC2 instances
+    # 3. Desplegar a las instancias EC2 (con clave SSH)
+    - name: Deploy to EC2 instance
       run: |
-        # Guardar la clave SSH desde el secreto
         echo "${{ secrets.EC2_SSH_KEY }}" > stalin.pem
         chmod 600 stalin.pem
 
-        # Obtener las IPs de las instancias EC2 activas
-        aws ec2 describe-instances --filters "Name=instance-state-name,Values=running" \
-        --query 'Reservations[*].Instances[*].PublicIpAddress' --output text > instances.txt
+        # Conectar a las instancias EC2 manualmente usando sus IPs
+        ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ec2-user@ec2-52-91-198-69.compute-1.amazonaws.com "
+          cd /path/to/project && git pull origin main && npm install && pm2 restart all
+        "
+        # Agrega las IPs de las otras instancias de la misma manera
+        ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ec2-user@<other-instance-ip> "
+          cd /path/to/project && git pull origin main && npm install && pm2 restart all
+        "
 
-        # Conectar a cada instancia usando SSH y actualizar el código
-        for instance in $(cat instances.txt); do
-          echo "Conectando a la instancia $instance"
-          ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ec2-user@$instance "
-            cd /path/to/project && git pull origin main && npm install && pm2 restart all
-          "
-        done
-
-    # 4. Variables de entorno para autenticarse en AWS
+    # 4. Guardar las claves en GitHub Secrets
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: "us-east-1"  # Cambia según tu región
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
