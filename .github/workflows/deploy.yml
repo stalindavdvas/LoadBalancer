@@ -20,20 +20,22 @@ jobs:
         echo "${{ secrets.EC2_SSH_KEY }}" > stalin.pem
         chmod 600 stalin.pem
 
-    # 3. Conectar a la primera instancia y actualizar el código
+    # 3. Conectar a la primera instancia y desplegar el archivo index.html
     - name: Deploy to first EC2 instance
       run: |
         ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ubuntu@ec2-52-54-210-132.compute-1.amazonaws.com "
           cd /var/www/html &&
           git pull origin main &&
+          cp path/to/your/index.html /var/www/html/index.html &&
           sudo systemctl restart nginx
         "
 
-    # 4. Conectar a la segunda instancia y actualizar el código
+    # 4. Conectar a la segunda instancia y desplegar el archivo index.html
     - name: Deploy to second EC2 instance
       run: |
         ssh -o "StrictHostKeyChecking=no" -i "stalin.pem" ubuntu@ec2-52-91-167-179.compute-1.amazonaws.com "
           cd /var/www/html &&
           git pull origin main &&
+          cp path/to/your/index.html /var/www/html/index.html &&
           sudo systemctl restart nginx
         "
